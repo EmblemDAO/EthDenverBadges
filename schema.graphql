@@ -1,0 +1,466 @@
+########################
+#### Badge Entities ####
+########################
+
+"""
+Ethereum accounts this subgraph is tracking in order to award badges
+"""
+type BadgeUser @entity {
+  "Ethereum address"
+  id: ID!
+  "BadgeWinner null if no badges won"
+  badgeWinner: BadgeWinner @derivedFrom(field: "badgeUser")
+  "Progress user has made along predefined metrics"
+  progress: [Progress!]! @derivedFrom(field: "badgeUser")
+}
+
+"""
+BadgeUsers that have earned at least one badge
+"""
+type BadgeWinner @entity {
+  "ETH address of the BadgeWinner"
+  id: ID!
+  "Associated BadgeUser"
+  badgeUser: BadgeUser!
+  "Number of badge awards won"
+  earnedBadgeCount: Int!
+  "Number of badge awards minted"
+  mintedAwardCount: Int!
+  "Voting power accumulated from all badges"
+  votingPower: BigInt!
+  "Badges awarded to address"
+  earnedBadges: [EarnedBadge!]! @derivedFrom(field: "badgeWinner")
+}
+
+"""
+EarnedBadges are awarded to BadgeWinners for satisfying BadgeDefinition thresholds
+"""
+type EarnedBadge @entity {
+  "{badgeName}-{BadgeWinner}"
+  id: ID!
+  "Address of the BadgeWinner"
+  badgeWinner: BadgeWinner!
+  "Block number in which badge was awarded"
+  blockAwarded: BigInt!
+  "Timestamp in which badge was awarded"
+  timestampAwarded: BigInt!
+  "Hash of the transaction that triggered this award"
+  transactionHash: String!
+  "Additional details about the badge"
+  definition: BadgeDefinition!
+  "Ordered number in which the badge was awarded for the associated definition"
+  awardNumber: Int!
+  # "Data specific to this earnedBadge of a given BadgeDefinition"
+  # metadata: [EarnedBadgeMetadata!]! @derivedFrom(field: "earnedBadge")
+  "Stores reference to global badge number"
+  earnedBadgeCount: EarnedBadgeCount! @derivedFrom(field: "earnedBadge")
+}
+
+"""
+Orders EarnedBadges for future merkle proof verification
+"""
+type EarnedBadgeCount @entity {
+  "incrementing number"
+  id: ID!
+  "Ordered number in which the badge was awarded across all badges"
+  globalBadgeNumber: Int!
+  "Associated earnedBadge"
+  earnedBadge: EarnedBadge!
+}
+
+type BadgeMetric @entity {
+  id: ID!
+  metricNumber: Int!
+  metricName: String!
+}
+
+"""
+BadgeDefinitions are created by the BadgeDefinitionManager smart contract.
+Subgraphs may also have genesis BadgeDefinitions that are baked in for retroactive 
+drops.
+"""
+type BadgeDefinition @entity {
+  "Name of badge"
+  id: ID!
+  "Description of badge"
+  description: String!
+  "Name of metric being tracked"
+  metric: BadgeMetric!
+  "Value that metric must reach in order for a badge to be awarded"
+  threshold: BigInt!
+  "Voting power acrued when badge is awarded"
+  votingPower: BigInt!
+  "Total count of earned badges"
+  earnedBadgeCount: Int!
+  "IPFS URI containing metadata about this BadgeDefinition"
+  ipfsURI: String!
+  "Incrementing number for efficient on-chain representation"
+  badgeDefinitionNumber: Int!
+  "Badges awarded with this definition"
+  earnedBadges: [EarnedBadge!]! @derivedFrom(field: "definition")
+}
+
+
+################################
+#### Internal Badge Entities ###
+################################
+
+
+"""
+Singleton entity that tracks numbers and stats relating to Emblem
+"""
+type EmblemEntityStats @entity {
+  "ID is set to 1"
+  id: ID!
+  "Number of badges earned"
+  earnedBadgeCount: Int!
+  "Number of unique BadgeWinners"
+  badgeWinnerCount: Int!
+  "Number of unique BadgeDefinitions created (including Genesis badges)"
+  badgeDefinitionCount: Int!
+  "Number of BadgeMetric entities"
+  badgeMetricCount: Int!
+}
+
+"""
+Saves progress along a metric for an account
+"""
+type Progress @entity {
+  "{Account address}-{BadgeMetric}"
+  id: ID!
+  "Account who has made this progress"
+  badgeUser: BadgeUser!
+  "BadgeMetric being tracked"
+  metric: BadgeMetric!
+  "Current value of metric. Negative progress is not supported. value can only go up"
+  value: BigInt!
+}
+
+
+################################
+# These are only required by Emblem frontend
+################################
+
+# enum EarnedBadgeMetadataName {
+#   INDEXER
+#   DELEGATOR
+#   CURATOR
+#   DEVELOPER
+#   SUBGRAPH
+#   SUBGRAPH_DEPLOYMENT
+#   TOKENS
+# }
+
+# """
+# EarnedBadge metadata specific to the given BadgeDefinition
+# """
+# type EarnedBadgeMetadata @entity {
+#   "{EarnedBadge}-{metricName}"
+#   id: ID!
+#   "Name of metric"
+#   name: EarnedBadgeMetadataName!
+#   "Value"
+#   value: String!
+#   "EarnedBadge the metadata refers to"
+#   earnedBadge: EarnedBadge!
+# }
+
+"""
+BadgeMetric -> BadgeDefinitions tracking that metric
+"""
+type MetricConsumer @entity {
+  "BadgeMetric"
+  id: ID!
+  "BadgeDefinitions using this metric"
+  badgeDefinitions: [BadgeDefinition!]!
+}
+
+
+
+type BalancerUser @entity {
+  "Address of Ethereum account"
+  id: ID!
+  "Total number of pools created by this user"
+  poolsCreated: Int!
+  "Total number of v1 pools created by this user"
+  poolsCreatedv1: Int!
+  "Total number of v2 pools created by this user"
+  poolsCreatedv2: Int!
+}
+
+
+
+
+
+
+# # Vault
+# type Balancer @entity {
+#   id: ID!
+#   poolCount: Int!
+#   pools: [Pool!] @derivedFrom(field: "vaultID")
+
+#   totalLiquidity: BigDecimal!
+#   totalSwapCount: BigInt!
+#   totalSwapVolume: BigDecimal!
+#   totalSwapFee: BigDecimal!
+# }
+
+# type Pool @entity {
+#   id: ID!
+#   address: Bytes!
+#   poolType: String
+#   factory: Bytes
+#   strategyType: Int!
+#   symbol: String
+#   name: String
+#   swapEnabled: Boolean!
+#   swapFee: BigDecimal!
+#   owner: Bytes
+
+#   totalWeight: BigDecimal
+#   totalSwapVolume: BigDecimal!
+#   totalSwapFee: BigDecimal!
+#   totalLiquidity: BigDecimal!
+#   totalShares: BigDecimal!
+
+#   createTime: Int!
+#   swapsCount: BigInt!
+#   holdersCount: BigInt!
+
+#   vaultID: Balancer!
+#   tx: Bytes
+
+#   tokensList: [Bytes!]!
+
+#   tokens: [PoolToken!] @derivedFrom(field: "poolId")
+#   swaps: [Swap!] @derivedFrom(field: "poolId")
+#   shares: [PoolShare!] @derivedFrom(field: "poolId")
+#   historicalValues: [PoolHistoricalLiquidity!] @derivedFrom(field: "poolId")
+
+#   # LiquidityBootstrappingPool Only
+#   weightUpdates: [GradualWeightUpdate!] @derivedFrom(field: "poolId")
+
+#   # StablePool Only
+#   amp: BigInt
+
+#   # MetaStablePool and LinearPool Only
+#   priceRateProviders: [PriceRateProvider!] @derivedFrom(field: "poolId")
+
+#   # ConvergentCurvePool (Element) Only
+#   principalToken: Bytes
+#   baseToken: Bytes
+#   expiryTime: BigInt
+#   unitSeconds: BigInt
+
+#   # InvestmentPool Only
+#   managementFee: BigDecimal
+
+#   # LinearPool Only
+#   mainIndex: Int
+#   wrappedIndex: Int
+#   lowerTarget: BigDecimal
+#   upperTarget: BigDecimal
+# }
+
+# type PoolToken @entity {
+#   id: ID!
+#   poolId: Pool!
+#   token: Token!
+#   symbol: String!
+#   name: String!
+#   decimals: Int!
+#   address: String!
+#   priceRate: BigDecimal!
+#   balance: BigDecimal!
+#   invested: BigDecimal!
+#   investments: [Investment!] @derivedFrom(field: "poolTokenId")
+
+#   # WeightedPool Only
+#   weight: BigDecimal
+# }
+
+# type PriceRateProvider @entity {
+#   id: ID!
+#   poolId: Pool!
+#   token: PoolToken!
+#   address: Bytes!
+#   rate: BigDecimal!
+#   lastCached: Int!
+#   cacheDuration: Int!
+#   cacheExpiry: Int!
+# }
+
+# type PoolShare @entity {
+#   id: ID!
+#   userAddress: User!
+#   poolId: Pool!
+#   balance: BigDecimal!
+# }
+
+# type User @entity {
+#   id: ID!
+#   sharesOwned: [PoolShare!] @derivedFrom(field: "userAddress")
+#   swaps: [Swap!] @derivedFrom(field: "userAddress")
+#   userInternalBalances: [UserInternalBalance!]
+#     @derivedFrom(field: "userAddress")
+# }
+
+# type UserInternalBalance @entity {
+#   id: ID!
+#   userAddress: User
+#   token: Bytes!
+#   balance: BigDecimal!
+# }
+
+# type GradualWeightUpdate @entity {
+#   id: ID!
+#   poolId: Pool!
+#   scheduledTimestamp: Int!
+#   startTimestamp: BigInt!
+#   endTimestamp: BigInt!
+#   startWeights: [BigInt!]!
+#   endWeights: [BigInt!]!
+# }
+
+# type AmpUpdate @entity {
+#   id: ID!
+#   poolId: Pool!
+#   scheduledTimestamp: Int!
+#   startTimestamp: BigInt!
+#   endTimestamp: BigInt!
+#   startAmp: BigInt!
+#   endAmp: BigInt!
+# }
+
+# type Swap @entity {
+#   id: ID!
+#   caller: Bytes!
+#   tokenIn: Bytes!
+#   tokenInSym: String!
+#   tokenOut: Bytes!
+#   tokenOutSym: String!
+#   tokenAmountIn: BigDecimal!
+#   tokenAmountOut: BigDecimal!
+#   poolId: Pool!
+#   userAddress: User!
+#   timestamp: Int!
+#   tx: Bytes!
+# }
+
+# enum InvestType {
+#   Join
+#   Exit
+# }
+
+# type JoinExit @entity {
+#   id: ID!
+#   type: InvestType!
+#   sender: Bytes!
+#   amounts: [BigDecimal!]!
+#   pool: Pool!
+#   user: User!
+#   timestamp: Int!
+#   tx: Bytes!
+# }
+
+# type LatestPrice @entity {
+#   id: ID!
+#   asset: Bytes!
+#   pricingAsset: Bytes! # address of stable asset
+#   poolId: Pool! # last pool which set price
+#   price: BigDecimal! # all the latest prices
+#   block: BigInt! # last block that prices were updated
+# }
+
+# type PoolHistoricalLiquidity @entity {
+#   id: ID!
+#   poolId: Pool!
+#   poolTotalShares: BigDecimal!
+#   poolLiquidity: BigDecimal! # total value, priced in the stable asset - ie USD
+#   poolShareValue: BigDecimal!
+#   pricingAsset: Bytes! # address of stable asset
+#   block: BigInt!
+# }
+
+# type TokenPrice @entity {
+#   id: ID! # address of token + address of stablecoin-poolId
+#   poolId: Pool!
+#   asset: Bytes!
+#   amount: BigDecimal!
+#   pricingAsset: Bytes! # address of stable asset
+#   price: BigDecimal!
+#   block: BigInt!
+#   timestamp: Int!
+# }
+
+# type Investment @entity {
+#   id: ID!
+#   assetManagerAddress: Bytes!
+#   amount: BigDecimal!
+#   poolTokenId: PoolToken!
+#   timestamp: Int!
+# }
+
+# type PoolSnapshot @entity {
+#   id: ID!
+#   pool: Pool!
+#   amounts: [BigDecimal!]!
+#   totalShares: BigDecimal!
+#   swapVolume: BigDecimal!
+#   swapFees: BigDecimal!
+#   liquidity: BigDecimal!
+#   timestamp: Int!
+# }
+
+# type Token @entity {
+#   id: ID!
+#   symbol: String
+#   name: String
+#   decimals: Int!
+#   address: String!
+#   totalBalanceUSD: BigDecimal! # total balance of tokens across balancer
+#   totalBalanceNotional: BigDecimal!
+#   totalVolumeUSD: BigDecimal! # total volume in fiat (usd)
+#   totalVolumeNotional: BigDecimal!
+#   totalSwapCount: BigInt!
+#   latestPrice: LatestPrice # latest price of token, updated when pool liquidity changes
+# }
+
+# type TokenSnapshot @entity {
+#   id: ID! # token address + dayId
+#   token: Token!
+#   timestamp: Int! # timestamp representing the start of day in UTC
+#   totalBalanceUSD: BigDecimal! # total balance of tokens across balancer
+#   totalBalanceNotional: BigDecimal! # underlying asset balance
+#   totalVolumeUSD: BigDecimal! # amount of volume the token has moved on this day
+#   totalVolumeNotional: BigDecimal! # underyling asset volume
+#   totalSwapCount: BigInt!
+# }
+
+# type TradePair @entity {
+#   "Token Address - Token Address"
+#   id: ID!
+#   token0: Token!
+#   token1: Token!
+#   totalSwapVolume: BigDecimal!
+#   totalSwapFee: BigDecimal!
+# }
+
+# type TradePairSnapshot @entity {
+#   id: ID!
+#   pair: TradePair!
+#   timestamp: Int!
+#   totalSwapVolume: BigDecimal!
+#   totalSwapFee: BigDecimal!
+# }
+
+# type BalancerSnapshot @entity {
+#   id: ID!
+#   vault: Balancer!
+#   timestamp: Int!
+#   poolCount: Int!
+#   totalLiquidity: BigDecimal!
+#   totalSwapCount: BigInt!
+#   totalSwapVolume: BigDecimal!
+#   totalSwapFee: BigDecimal!
+# }
