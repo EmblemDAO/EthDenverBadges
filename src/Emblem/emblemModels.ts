@@ -37,9 +37,6 @@ export function createOrLoadBadgeUser(address: string): BadgeUser {
   if (badgeUser == null) {
     badgeUser = new BadgeUser(address);
     badgeUser.save();
-
-    // hacky way to initialize entity stats
-    createOrLoadEmblemEntityStats();
   }
 
   return badgeUser as BadgeUser;
